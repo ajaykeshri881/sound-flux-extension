@@ -379,5 +379,5 @@
 
   setInterval(scanAndProcess, 3000);
 
-  console.log('[Sound Flux] 🚀 v7 — Audio engine loaded');
+  console.log('[Sound Flux] 🚀 v4.0 — Audio engine loaded');
 })();

@@ -1,4 +1,4 @@
-// ─── Sound Flux — Popup Controller v3.0 ────────────────────────────────
+// ─── Sound Flux — Popup Controller v4.0 ────────────────────────────────
 // Manages the popup UI: reads/writes state from the background service worker,
 // updates the circular volume ring, sliders, presets, live visualizer,
 // custom EQ presets, and per-site volume memory.
