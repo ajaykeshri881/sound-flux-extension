@@ -26,6 +26,7 @@
     bassBoost: 0,
     voiceBoost: 0,
     compressor: true,
+    effect3d: false,
     preset: 'none',
     enabled: true
   };
@@ -109,6 +110,27 @@
       voiceFilter.frequency.value = 2500;
       voiceFilter.Q.value = 1.0;
       voiceFilter.gain.value = 0;
+      // ── SPATIAL AUDIO ENGINE ──────────────────────────────────────
+      // Single signal path. An LFO drives a StereoPanner left ↔ right.
+      // 3D ON  → LFO depth fades in  → smooth spatial sweep
+      // 3D OFF → LFO depth fades out → panner returns to centre, transparent
+      // There is NO parallel bypass path — doubling is impossible.
+
+      const spatialPanner = ctx.createStereoPanner();
+      spatialPanner.pan.value = 0; // centre by default
+
+      // Low-frequency oscillator drives the pan position
+      const spatialLfo = ctx.createOscillator();
+      spatialLfo.type = 'sine';
+      spatialLfo.frequency.value = 0.09; // ~11 second full sweep (L→R→L)
+      spatialLfo.start();
+
+      // LFO depth gate: 0 = 3D off (no movement), 0.85 = 3D on (wide sweep)
+      const spatialDepth = ctx.createGain();
+      spatialDepth.gain.value = 0;
+
+      spatialLfo.connect(spatialDepth);
+      spatialDepth.connect(spatialPanner.pan);
 
       const gainNode = ctx.createGain();
       gainNode.gain.value = 1.0;
@@ -120,7 +142,7 @@
       limiter.attack.value = 0.003;
       limiter.release.value = 0.1;
 
-      // ── CONNECT CHAIN ──────────────────────────────────────────────
+      // ── CONNECT CHAIN (single path, no branching) ─────────────────
       source.connect(deepBassFilter);
       deepBassFilter.connect(subBassFilter);
       subBassFilter.connect(bassPunchFilter);
@@ -128,13 +150,15 @@
       bassFilter.connect(midFilter);
       midFilter.connect(trebleFilter);
       trebleFilter.connect(voiceFilter);
-      voiceFilter.connect(gainNode);
+      voiceFilter.connect(spatialPanner); // always in chain
+      spatialPanner.connect(gainNode);
       gainNode.connect(limiter);
       limiter.connect(ctx.destination);
 
       elementNodes.set(el, {
         source, deepBassFilter, subBassFilter, bassPunchFilter, bassFilter,
-        midFilter, trebleFilter, voiceFilter, gainNode, limiter
+        midFilter, trebleFilter, voiceFilter, gainNode, limiter,
+        spatialPanner, spatialDepth  // depth gate controls 3D on/off
       });
 
       processedElements.add(el);
@@ -173,13 +197,32 @@
       if (currentState.volume <= 100) {
         targetGain = currentState.volume / 100;
       } else {
-        // Aggressive boost curve: 100% = 1.0x, 500% = 7.0x gain
-        targetGain = 1 + ((currentState.volume - 100) / 100) * 1.5;
+        // Extreme boost curve: 100% = 1.0x, 1000% = 32.5x gain
+        // Massively increased loudness capacity based on user feedback
+        targetGain = 1 + ((currentState.volume - 100) / 100) * 3.5;
       }
     }
     nodes.gainNode.gain.cancelScheduledValues(now);
     nodes.gainNode.gain.setValueAtTime(nodes.gainNode.gain.value, now);
     nodes.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.12);
+
+    // ─ Spatial 3D Effect ─────────────────────────────────────────────
+    if (nodes.spatialDepth) {
+      if (currentState.effect3d) {
+        // Fade LFO depth IN over 1s → smooth, comfortable spatial sweep begins
+        nodes.spatialDepth.gain.cancelScheduledValues(now);
+        nodes.spatialDepth.gain.setValueAtTime(nodes.spatialDepth.gain.value, now);
+        nodes.spatialDepth.gain.linearRampToValueAtTime(0.85, now + 1.0);
+      } else {
+        // Fade LFO depth OUT over 1s → movement stops, panner drifts to centre
+        nodes.spatialDepth.gain.cancelScheduledValues(now);
+        nodes.spatialDepth.gain.setValueAtTime(nodes.spatialDepth.gain.value, now);
+        nodes.spatialDepth.gain.linearRampToValueAtTime(0, now + 1.0);
+        // Gently nudge pan back to 0 so it doesn't freeze mid-sweep
+        nodes.spatialPanner.pan.cancelScheduledValues(now + 1.0);
+        nodes.spatialPanner.pan.setTargetAtTime(0, now + 1.0, 0.5);
+      }
+    }
 
     // ─ Limiter — ALWAYS active to prevent hard digital clipping ─────────
     if (currentState.compressor) {

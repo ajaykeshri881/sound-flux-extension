@@ -19,6 +19,7 @@
   const voiceSlider      = document.getElementById('voiceSlider');
   const voiceValue       = document.getElementById('voiceValue');
   const compressorToggle = document.getElementById('compressorToggle');
+  const effect3dToggle   = document.getElementById('effect3dToggle');
   const presetGrid       = document.getElementById('presetGrid');
   const volPresetBtns    = document.querySelectorAll('.vol-preset-btn');
   const themeBtn         = document.getElementById('themeBtn');
@@ -31,6 +32,7 @@
   const volWarnCancel    = document.getElementById('volWarnCancel');
   const volWarnConfirm   = document.getElementById('volWarnConfirm');
   const volWarnNever     = document.getElementById('volWarnNever');
+  const toastNotification= document.getElementById('toastNotification');
 
   // ── State ───────────────────────────────────────────────────────────
   let currentTabId  = null;
@@ -47,9 +49,11 @@
     bassBoost: 0,
     voiceBoost: 0,
     compressor: true,
+    effect3d: false,
     preset: 'none',
     enabled: true,
-    neverWarnHighVolume: false
+    neverWarnHighVolume: false,
+    neverWarnDistortion: false
   };
 
   let state = { ...DEFAULT_STATE };
@@ -269,10 +273,95 @@
     });
 
     // Compressor toggle
-    compressorToggle.addEventListener('change', () => {
+    let pendingCompressorOff = false;
+    compressorToggle.addEventListener('change', (e) => {
+      if (!compressorToggle.checked && !state.neverWarnDistortion) {
+        // Prevent immediate turn off, show warning instead
+        compressorToggle.checked = true;
+        pendingCompressorOff = true;
+        document.getElementById('distortionWarnOverlay').setAttribute('aria-hidden', 'false');
+        return;
+      }
       state.compressor = compressorToggle.checked;
       pushState();
     });
+
+    const distortionWarnCancel = document.getElementById('distortionWarnCancel');
+    const distortionWarnConfirm = document.getElementById('distortionWarnConfirm');
+    const distortionWarnNever = document.getElementById('distortionWarnNever');
+    const distortionWarnOverlay = document.getElementById('distortionWarnOverlay');
+
+    if (distortionWarnCancel) {
+      distortionWarnCancel.addEventListener('click', () => {
+        distortionWarnOverlay.setAttribute('aria-hidden', 'true');
+        pendingCompressorOff = false;
+      });
+      
+      distortionWarnConfirm.addEventListener('click', () => {
+        distortionWarnOverlay.setAttribute('aria-hidden', 'true');
+        if (pendingCompressorOff) {
+          state.compressor = false;
+          compressorToggle.checked = false;
+          pushState();
+          pendingCompressorOff = false;
+        }
+      });
+      
+      distortionWarnNever.addEventListener('click', () => {
+        state.neverWarnDistortion = true;
+        distortionWarnOverlay.setAttribute('aria-hidden', 'true');
+        if (pendingCompressorOff) {
+          state.compressor = false;
+          compressorToggle.checked = false;
+          pushState();
+          pendingCompressorOff = false;
+        }
+      });
+    }
+
+    // 3D Effect toggle
+    let toastTimeout;
+    effect3dToggle.addEventListener('change', () => {
+      state.effect3d = effect3dToggle.checked;
+      pushState();
+      
+      if (state.effect3d) {
+        chrome.storage.local.get(['toastShown'], (res) => {
+          if (!res.toastShown) {
+            toastNotification.setAttribute('aria-hidden', 'false');
+            
+            const progressFill = document.getElementById('toastProgressFill');
+            if (progressFill) {
+              progressFill.classList.remove('active');
+              void progressFill.offsetWidth; // trigger reflow
+              progressFill.classList.add('active');
+            }
+            
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+              toastNotification.setAttribute('aria-hidden', 'true');
+            }, 3500); // 3.5s matches CSS animation
+            
+            // Removed automatic toastShown=true so it keeps showing
+          }
+        });
+      }
+    });
+
+    const closeToastBtn = document.getElementById('closeToastBtn');
+    if (closeToastBtn) {
+      closeToastBtn.addEventListener('click', () => {
+        toastNotification.setAttribute('aria-hidden', 'true');
+        if (toastTimeout) clearTimeout(toastTimeout);
+      });
+    }
+
+    const toastNeverShowCheckbox = document.getElementById('toastNeverShowCheckbox');
+    if (toastNeverShowCheckbox) {
+      toastNeverShowCheckbox.addEventListener('change', (e) => {
+        chrome.storage.local.set({ toastShown: e.target.checked });
+      });
+    }
 
     // Global Volume toggle
     globalVolumeToggle.addEventListener('change', () => {
@@ -373,6 +462,9 @@
 
     // Compressor
     compressorToggle.checked = state.compressor;
+
+    // 3D Effect
+    effect3dToggle.checked = state.effect3d || false;
 
     // EQ Presets
     presetGrid.querySelectorAll('.preset-btn').forEach(btn => {
@@ -538,35 +630,44 @@
       vizTime += 0.04;
 
       for (let i = 0; i < NUM_BARS; i++) {
+        // Symmetrical EQ shape: highest in the center, tapering off at edges
+        const centerDist = Math.abs(i - NUM_BARS / 2) / (NUM_BARS / 2); 
+        const freqCurve = 1 - centerDist * 0.7; // 1.0 at center, 0.3 at edge
+
         // Layered sinusoidal animation for organic feel
         const wave1 = Math.sin(vizTime * barSpeeds[i] + barOffsets[i]);
         const wave2 = Math.sin(vizTime * barSpeeds[i] * 0.7 + barOffsets[i] * 1.3) * 0.4;
         const wave  = (wave1 + wave2) / 1.4;
         const norm  = (wave + 1) / 2; // 0..1
 
-        // Bass band bars are taller (simulate frequency spectrum look)
-        const freqCurve = 1 - Math.abs(i / NUM_BARS - 0.2) * 0.6; // peaks at ~20% from left
-        const barHeight = Math.max(2, norm * maxH * currentVolFraction * freqCurve);
+        // Math.pow(norm, 1.5) makes the bars "punch" harder like a real beat
+        const barHeight = Math.max(2, Math.pow(norm, 1.5) * maxH * currentVolFraction * freqCurve);
 
         const x = i * (barW + gap);
         const y = H - barHeight;
 
         // Color based on volume
         let barColor = accentColor;
-        if (state.volume > 400) barColor = dangerColor;
-        else if (state.volume > 200) barColor = warningColor;
+        if (state.volume > 800) barColor = dangerColor;
+        else if (state.volume > 400) barColor = warningColor;
 
-        // Create a nice sleek gradient for each bar
+        // Premium sleek gradient
         const gradient = ctx2d.createLinearGradient(x, y, x, H);
         gradient.addColorStop(0, barColor);
-        // Fade to transparent at the bottom
         gradient.addColorStop(1, 'transparent');
+
+        // Premium Neon Glow
+        ctx2d.shadowBlur = 4;
+        ctx2d.shadowColor = barColor;
 
         ctx2d.fillStyle = gradient;
         ctx2d.beginPath();
-        // Rounded top corners
-        ctx2d.roundRect(x, y, barW, barHeight, [2, 2, 0, 0]);
+        // Fully rounded capsule tops
+        ctx2d.roundRect(x, y, barW, barHeight, [barW/2, barW/2, 0, 0]);
         ctx2d.fill();
+        
+        // Reset shadow for next operations if any
+        ctx2d.shadowBlur = 0;
       }
     }
 

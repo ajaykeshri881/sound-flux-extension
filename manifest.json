@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sound Flux",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Boost audio volume up to 1000% with a live visualizer, custom EQ presets, compressor, and per-site volume memory.",
   "permissions": [
     "activeTab",
