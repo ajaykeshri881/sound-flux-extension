@@ -1,6 +1,6 @@
 {
   "name": "volume",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "description": "Boost your audio listening experience on the web with a professional, premium-grade extension. Sound Flux goes beyond simple volume boosting by providing a true audiophile toolkit right in your browser.",
   "main": "index.js",
   "scripts": {
