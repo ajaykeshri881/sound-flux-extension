@@ -1,7 +1,7 @@
 {
-  "name": "volume",
+  "name": "sound-flux-extension",
   "version": "4.0.0",
-  "description": "Boost your audio listening experience on the web with a professional, premium-grade extension. Sound Flux goes beyond simple volume boosting by providing a true audiophile toolkit right in your browser.",
+  "description": "A Chrome extension that boosts browser audio with EQ presets, live visualization, and per-site volume control.",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
@@ -11,9 +11,18 @@
     "type": "git",
     "url": "git+https://github.com/ajaykeshri881/sound-flux-extension.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "chrome-extension",
+    "volume-booster",
+    "audio",
+    "sound",
+    "equalizer",
+    "typescript",
+    "audio-enhancer",
+    "browser-audio"
+  ],
+  "author": "Ajay Keshri",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/ajaykeshri881/sound-flux-extension/issues"
