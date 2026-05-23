@@ -20,59 +20,82 @@ Features include up to 1000% volume amplification, a true surround 3D spatial en
 ## 💻 Tech Stack
 
 - **Platform:** Chrome Extension (Manifest V3)
-- **Languages:** HTML5, CSS3, Vanilla JavaScript (ES6+)
+- **Languages:** TypeScript, HTML5, CSS3
 - **APIs & Core Technologies:**
   - **Web Audio API:** The beating heart of the extension. Used for all real-time audio processing (`GainNode`, `DynamicsCompressorNode`, `BiquadFilterNode`, `StereoPannerNode`).
   - **HTML5 Canvas:** Powers the high-performance live visualizer rendering.
   - **Chrome Storage API (`chrome.storage.local`):** Persistently saves user configurations and domain-specific settings.
   - **Chrome Scripting & Tabs APIs:** Injects the core audio routing scripts into the active tabs.
   - **DOM & CSS Variables:** Handles dynamic theming (Light/Dark mode) and interactive glassmorphism UI elements without any heavy frontend frameworks.
+- **Build Tools:** Node.js, TypeScript Compiler (`tsc`)
 
 ## 📂 File Architecture
 
-The extension is structured cleanly to separate the UI, the background service worker, and the injected audio engine.
+The extension is cleanly architected using TypeScript, separating the UI, the background service worker, and the injected audio engine.
 
 ```text
 sound-flux-extension/
 ├── manifest.json              # Extension configuration, permissions, and entry points
+├── package.json               # Node dependencies and build scripts
+├── tsconfig.json              # TypeScript compiler configuration
 ├── README.md                  # Project documentation (You are here)
 ├── icons/                     # Extension icons (16x16, 48x48, 128x128)
 │
-└── src/                       # Source Code
+├── dist/                      # Compiled Output (Generated after build)
+│   └── (compiled .js files)
+│
+└── src/                       # Source Code (TypeScript)
+    ├── types.d.ts             # Global TypeScript interfaces for Audio graphs and state
+    │
     ├── background/            
-    │   └── background.js      # Service Worker: Manages state, tab injection, and messaging
+    │   └── background.ts      # Service Worker: Manages state, tab injection, and messaging
     │
     ├── content/               
-    │   ├── content.js         # Bridge: Injects injected.js into the main page execution world
-    │   └── injected.js        # Core Audio Engine: Runs in the page's main world. 
+    │   ├── content.ts         # Bridge: Injects injected.ts into the main page execution world
+    │   └── injected.ts        # Core Audio Engine: Runs in the page's main world. 
     │                          # Hijacks HTMLMediaElements to route audio through the Web Audio API graph.
     │
     └── popup/                 
         ├── popup.html         # UI Layout: The glassmorphism extension interface
         ├── popup.css          # UI Styling: Themes, animations, layout, and visual components
-        └── popup.js           # UI Logic: Handles sliders, toggles, visualizer drawing, and message passing
+        └── popup.ts           # UI Logic: Handles sliders, toggles, visualizer drawing, and message passing
 ```
 
 ### Deep Dive: How the Audio Routing Works
 
 Because of Chrome's strict extension isolation, the extension cannot easily intercept audio from a standard content script. 
 
-1. `background.js` listens for tab updates and injects `content.js` into the webpage.
-2. `content.js` creates a `<script>` tag that loads `injected.js` directly into the DOM's main execution environment (Main World).
-3. `injected.js` intercepts the creation of `<audio>` and `<video>` tags (or finds existing ones).
+1. `background.ts` listens for tab updates and injects `content.ts` into the webpage.
+2. `content.ts` injects `injected.ts` directly into the DOM's main execution environment (Main World) using Manifest V3 isolated world features.
+3. `injected.ts` intercepts the creation of `<audio>` and `<video>` tags (or finds existing ones).
 4. It passes their sources into a complex `AudioContext` graph consisting of deep bass filters, voice clarity filters, a true surround spatial panner, and finally an anti-distortion limiter before sending it to the speakers.
 
-## 🚀 How to Setup / Install
+## 🚀 How to Setup / Install (Developer)
 
-1. Download or clone this repository to your local machine:
+To install this extension directly from the source code, follow these steps:
+
+1. **Clone the Repository:**
    ```bash
    git clone https://github.com/ajaykeshri881/sound-flux-extension.git
+   cd sound-flux-extension
    ```
-2. Open Google Chrome and navigate to `chrome://extensions/`.
-3. Enable **Developer mode** using the toggle switch in the top right corner.
-4. Click on the **Load unpacked** button in the top left.
-5. Select the `sound-flux-extension` folder you just downloaded/cloned.
-6. The extension is now installed! Pin it to your toolbar for quick access.
+2. **Install Dependencies:**
+   Ensure you have Node.js installed, then run:
+   ```bash
+   npm install
+   ```
+3. **Build the TypeScript Code:**
+   Compile the `.ts` source files into the `.js` files required by Chrome:
+   ```bash
+   npm run build
+   ```
+   *(Note: For continuous development, you can run `npx tsc --watch`)*
+4. **Load into Chrome:**
+   - Open Google Chrome and navigate to `chrome://extensions/`.
+   - Enable **Developer mode** using the toggle switch in the top right corner.
+   - Click on the **Load unpacked** button in the top left.
+   - Select the `sound-flux-extension` folder.
+5. **Done!** The extension is now installed. Pin it to your toolbar for quick access.
 
 ## ❤️ Support & Sponsor
 
