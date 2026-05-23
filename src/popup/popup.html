@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Flux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- ── Volume Warning Overlay ──────────────────────────────────── -->
+    <div class="vol-warn-overlay" id="volWarnOverlay" aria-hidden="true">
+      <div class="vol-warn-dialog" role="alertdialog">
+        <div class="vol-warn-icon-wrap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="vol-warn-title">Boost Beyond 800%</h3>
+        <p class="vol-warn-text">High volume levels may reduce audio quality or cause distortion depending on your speakers and source audio.</p>
+        <div class="vol-warn-actions">
+          <button class="vol-warn-cancel" id="volWarnCancel">Stay Below 800%</button>
+          <button class="vol-warn-confirm" id="volWarnConfirm">Continue Anyway</button>
+          <button class="vol-warn-never" id="volWarnNever" style="margin-top: 4px; background: transparent; border: none; color: var(--text-muted); font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 4px; width: 100%;">Don't show this again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Header ──────────────────────────────────────────────────── -->
+    <header class="header">
+      <div class="header-left">
+        <div class="header-text">
+          <h1>Sound Flux</h1>
+          <p class="subtitle" id="tabName">Loading...</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn theme-btn" id="themeBtn" title="Toggle Light/Dark Mode">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="moon-icon">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn reset-btn" id="resetBtn" title="Reset all settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 3v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn power-btn" id="powerBtn" title="Enable / Disable">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M18.36 6.64C19.6184 7.89879 20.4753 9.50244 20.8223 11.2482C21.1693 12.994 20.9909 14.8034 20.3096 16.4478C19.6284 18.0921 18.4748 19.4976 16.9948 20.4864C15.5148 21.4752 13.7749 22.0029 11.995 22.0029C10.2151 22.0029 8.47515 21.4752 6.99517 20.4864C5.51519 19.4976 4.36164 18.0921 3.68036 16.4478C2.99909 14.8034 2.82069 12.994 3.16772 11.2482C3.51475 9.50244 4.37162 7.89879 5.63 6.64" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Main Volume Control ─────────────────────────────────────── -->
+    <section class="volume-section card" id="volumeSection">
+      <div class="volume-display">
+        <div class="volume-ring" id="volumeRing">
+          <svg viewBox="0 0 160 160" class="ring-svg">
+            <circle cx="80" cy="80" r="70" class="ring-bg"/>
+            <circle cx="80" cy="80" r="70" class="ring-fill" id="ringFill"/>
+          </svg>
+          <div class="volume-value" id="volumeValue">100%</div>
+        </div>
+        <div class="site-memory-badge" id="siteMemoryBadge" title="Volume remembered for this site">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Site Memory
+        </div>
+      </div>
+      <div class="volume-slider-wrap">
+        <span class="slider-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <input type="range" id="volumeSlider" class="slider volume-slider" min="0" max="1000" value="100" step="1">
+        <span class="slider-max">1000%</span>
+      </div>
+      
+      <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+        <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+          <input type="checkbox" id="globalVolumeToggle" style="accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer;">
+          Remember for all sites
+        </label>
+      </div>
+
+      <div class="volume-presets">
+        <button class="vol-preset-btn" data-vol="100">100%</button>
+        <button class="vol-preset-btn" data-vol="200">200%</button>
+        <button class="vol-preset-btn" data-vol="400">400%</button>
+        <button class="vol-preset-btn" data-vol="800">800%</button>
+        <button class="vol-preset-btn" data-vol="1000">MAX</button>
+      </div>
+    </section>
+
+    <!-- ── Enhance Section ─────────────────────────────────────────── -->
+    <section class="enhance-section card">
+      <div class="section-header">
+        <h2>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Enhance
+        </h2>
+        <div class="compressor-toggle">
+          <label class="toggle-label" for="compressorToggle">
+            <span class="toggle-text">Anti-Distortion</span>
+            <span class="recommended-badge">Recommended</span>
+            <div class="toggle-switch">
+              <input type="checkbox" id="compressorToggle">
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Bass Boost -->
+      <div class="enhance-control">
+        <div class="control-header">
+          <span class="control-label">Bass Boost</span>
+          <span class="control-value" id="bassValue">0 dB</span>
+        </div>
+        <input type="range" id="bassSlider" class="slider bass-slider" min="0" max="15" value="0" step="1">
+      </div>
+
+      <!-- Voice Clarity -->
+      <div class="enhance-control">
+        <div class="control-header">
+          <span class="control-label">Voice Clarity</span>
+          <span class="control-value" id="voiceValue">0 dB</span>
+        </div>
+        <input type="range" id="voiceSlider" class="slider voice-slider" min="0" max="15" value="0" step="1">
+      </div>
+    </section>
+
+    <!-- ── EQ Presets ──────────────────────────────────────────────── -->
+    <section class="presets-section card">
+      <h2>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+          <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+          <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+          <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        EQ Presets
+      </h2>
+      <div class="preset-grid" id="presetGrid">
+        <button class="preset-btn active" data-preset="none">
+          <span class="preset-icon">🎵</span>
+          <span class="preset-name">Default</span>
+        </button>
+        <button class="preset-btn" data-preset="bass_boost">
+          <span class="preset-icon">🔊</span>
+          <span class="preset-name">Bass+</span>
+        </button>
+        <button class="preset-btn" data-preset="vocal_clarity">
+          <span class="preset-icon">🎙️</span>
+          <span class="preset-name">Vocal</span>
+        </button>
+        <button class="preset-btn" data-preset="treble_boost">
+          <span class="preset-icon">✨</span>
+          <span class="preset-name">Treble+</span>
+        </button>
+        <button class="preset-btn" data-preset="cinema">
+          <span class="preset-icon">🎬</span>
+          <span class="preset-name">Cinema</span>
+        </button>
+        <button class="preset-btn" data-preset="podcast">
+          <span class="preset-icon">🎧</span>
+          <span class="preset-name">Podcast</span>
+        </button>
+        <button class="preset-btn" data-preset="night_mode">
+          <span class="preset-icon">🌙</span>
+          <span class="preset-name">Night</span>
+        </button>
+        <button class="preset-btn" data-preset="gaming">
+          <span class="preset-icon">🎮</span>
+          <span class="preset-name">Gaming</span>
+        </button>
+        <button class="preset-btn" data-preset="music">
+          <span class="preset-icon">🎸</span>
+          <span class="preset-name">Music</span>
+        </button>
+        <button class="preset-btn" data-preset="study">
+          <span class="preset-icon">📚</span>
+          <span class="preset-name">Study</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ── Footer / Live Visualizer ───────────────────────────────── -->
+    <footer class="footer">
+      <div class="live-visualizer-wrap">
+        <canvas id="liveVisualizer" width="304" height="32"></canvas>
+      </div>
+      
+      <div class="footer-bottom">
+        <p class="footer-text">Sound Flux v3.0</p>
+        <div class="footer-credit">
+          <span>Built with ❤️ by</span>
+          <a href="https://www.ajaykeshri.com" target="_blank" class="credit-link" id="authorLink">Ajay Keshri</a>
+        </div>
+        <a href="https://github.com/sponsors/ajaykeshri881" target="_blank" class="sponsor-btn" id="sponsorBtn">
+          <span class="heart">❤️</span> Sponsor
+        </a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
