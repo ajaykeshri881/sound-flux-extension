@@ -4,11 +4,11 @@
 (function () {
   'use strict';
 
-  if (window.__vmpBridgeLoaded) return;
-  window.__vmpBridgeLoaded = true;
+  if ((window as any).__vmpBridgeLoaded) return;
+  (window as any).__vmpBridgeLoaded = true;
 
   // ── Listen for messages from background/popup ──────────────────────
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
     if (message.type === 'APPLY_STATE') {
       window.postMessage({
         direction: 'VMP_TO_MAIN',

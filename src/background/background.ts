@@ -2,20 +2,21 @@
 // Handles messaging between popup and content scripts, manages per-tab state
 // and per-site volume memory.
 
-const DEFAULT_STATE = {
+const DEFAULT_STATE: AudioState = {
   volume: 100,
   bassBoost: 0,
   voiceBoost: 0,
   compressor: true,
   preset: 'none',
-  enabled: true
+  enabled: true,
+  spatial3d: false
 };
 
 // In-memory cache for quick access (persisted to storage on change)
-const tabStates = new Map();
+const tabStates = new Map<number, AudioState>();
 
 // Listen for messages from popup & content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message.type === 'GET_STATE') {
     getTabState(message.tabId).then(state => sendResponse(state));
     return true; // async
@@ -75,21 +76,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Clean up state when a tab is closed
-chrome.tabs.onRemoved.addListener((tabId) => {
+chrome.tabs.onRemoved.addListener((tabId: number) => {
   tabStates.delete(tabId);
   chrome.storage.local.remove(`tab_${tabId}`);
 });
 
-async function getTabState(tabId) {
-  if (tabStates.has(tabId)) return tabStates.get(tabId);
+async function getTabState(tabId: number): Promise<AudioState> {
+  if (tabStates.has(tabId)) return tabStates.get(tabId)!;
   const key = `tab_${tabId}`;
   const result = await chrome.storage.local.get(key);
-  const state = result[key] || { ...DEFAULT_STATE };
+  const state: AudioState = (result[key] as AudioState) || { ...DEFAULT_STATE };
   tabStates.set(tabId, state);
   return state;
 }
 
-async function setTabState(tabId, state) {
+async function setTabState(tabId: number, state: AudioState): Promise<void> {
   tabStates.set(tabId, state);
   await chrome.storage.local.set({ [`tab_${tabId}`]: state });
 }

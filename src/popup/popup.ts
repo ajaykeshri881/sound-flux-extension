@@ -7,49 +7,49 @@
   'use strict';
 
   // ── DOM References ──────────────────────────────────────────────────
-  const app              = document.getElementById('app');
-  const tabNameEl        = document.getElementById('tabName');
-  const powerBtn         = document.getElementById('powerBtn');
-  const resetBtn         = document.getElementById('resetBtn');
-  const volumeSlider     = document.getElementById('volumeSlider');
-  const volumeValue      = document.getElementById('volumeValue');
-  const ringFill         = document.getElementById('ringFill');
-  const bassSlider       = document.getElementById('bassSlider');
-  const bassValue        = document.getElementById('bassValue');
-  const voiceSlider      = document.getElementById('voiceSlider');
-  const voiceValue       = document.getElementById('voiceValue');
-  const compressorToggle = document.getElementById('compressorToggle');
-  const effect3dToggle   = document.getElementById('effect3dToggle');
-  const presetGrid       = document.getElementById('presetGrid');
+  const app              = document.getElementById('app') as HTMLElement;
+  const tabNameEl        = document.getElementById('tabName') as HTMLElement;
+  const powerBtn         = document.getElementById('powerBtn') as HTMLElement;
+  const resetBtn         = document.getElementById('resetBtn') as HTMLElement;
+  const volumeSlider     = document.getElementById('volumeSlider') as HTMLInputElement;
+  const volumeValue      = document.getElementById('volumeValue') as HTMLElement;
+  const ringFill         = document.getElementById('ringFill') as HTMLElement;
+  const bassSlider       = document.getElementById('bassSlider') as HTMLInputElement;
+  const bassValue        = document.getElementById('bassValue') as HTMLElement;
+  const voiceSlider      = document.getElementById('voiceSlider') as HTMLInputElement;
+  const voiceValue       = document.getElementById('voiceValue') as HTMLElement;
+  const compressorToggle = document.getElementById('compressorToggle') as HTMLInputElement;
+  const effect3dToggle   = document.getElementById('effect3dToggle') as HTMLInputElement;
+  const presetGrid       = document.getElementById('presetGrid') as HTMLElement;
   const volPresetBtns    = document.querySelectorAll('.vol-preset-btn');
-  const themeBtn         = document.getElementById('themeBtn');
-  const globalVolumeToggle = document.getElementById('globalVolumeToggle');
-  const siteMemoryBadge  = document.getElementById('siteMemoryBadge');
-  const visualizerCanvas = document.getElementById('liveVisualizer');
-  const ctx2d            = visualizerCanvas.getContext('2d');
+  const themeBtn         = document.getElementById('themeBtn') as HTMLElement;
+  const globalVolumeToggle = document.getElementById('globalVolumeToggle') as HTMLInputElement;
+  const siteMemoryBadge  = document.getElementById('siteMemoryBadge') as HTMLElement;
+  const visualizerCanvas = document.getElementById('liveVisualizer') as HTMLCanvasElement;
+  const ctx2d            = visualizerCanvas.getContext('2d') as CanvasRenderingContext2D;
 
-  const volWarnOverlay   = document.getElementById('volWarnOverlay');
-  const volWarnCancel    = document.getElementById('volWarnCancel');
-  const volWarnConfirm   = document.getElementById('volWarnConfirm');
-  const volWarnNever     = document.getElementById('volWarnNever');
-  const toastNotification= document.getElementById('toastNotification');
+  const volWarnOverlay   = document.getElementById('volWarnOverlay') as HTMLElement;
+  const volWarnCancel    = document.getElementById('volWarnCancel') as HTMLButtonElement;
+  const volWarnConfirm   = document.getElementById('volWarnConfirm') as HTMLButtonElement;
+  const volWarnNever     = document.getElementById('volWarnNever') as HTMLButtonElement;
+  const toastNotification= document.getElementById('toastNotification') as HTMLElement;
 
   // ── State ───────────────────────────────────────────────────────────
-  let currentTabId  = null;
-  let currentHost   = null;
+  let currentTabId: number | null = null;
+  let currentHost: string | null = null;
   let siteMemoryActive = false;
   let currentTheme = 'dark'; // default
   let hasConfirmedHighVolume = false;
-  let pendingHighVolume = null;
+  let pendingHighVolume: number | null = null;
   let isAudible = false;
   let isGlobalVolume = false;
 
-  const DEFAULT_STATE = {
+  const DEFAULT_STATE: AudioState & { neverWarnHighVolume: boolean, neverWarnDistortion: boolean } = {
     volume: 100,
     bassBoost: 0,
     voiceBoost: 0,
     compressor: true,
-    effect3d: false,
+    spatial3d: false,
     preset: 'none',
     enabled: true,
     neverWarnHighVolume: false,
@@ -66,7 +66,7 @@
   const barOffsets = Array.from({ length: NUM_BARS }, (_, i) => Math.random() * Math.PI * 2);
   const barSpeeds  = Array.from({ length: NUM_BARS }, (_, i) => 0.6 + Math.random() * 1.2);
   let   vizTime    = 0;
-  let   rafId      = null;
+  let   rafId: number | null = null;
 
   // ── Initialize ──────────────────────────────────────────────────────
   async function init() {
@@ -187,14 +187,13 @@
       setTimeout(() => { resetBtn.style.transform = ''; }, 450);
     });
 
-    // Volume slider
-    volumeSlider.addEventListener('input', (e) => {
-      const newVol = parseInt(e.target.value, 10);
+    volumeSlider.addEventListener('input', (e: Event) => {
+      const newVol = parseInt((e.target as HTMLInputElement).value, 10);
       
       // Warning threshold
       if (newVol > 800 && !hasConfirmedHighVolume && !state.neverWarnHighVolume && newVol > state.volume) {
         pendingHighVolume = newVol;
-        volumeSlider.value = Math.min(state.volume, 800); // snap back temporarily
+        volumeSlider.value = Math.min(state.volume, 800).toString(); // snap back temporarily
         volWarnOverlay.setAttribute('aria-hidden', 'false');
         return;
       }
@@ -212,14 +211,14 @@
       pendingHighVolume = null;
       // Ensure slider max value reflects any preset over 1000 (though we removed 1000, keep for safety)
       if (state.volume > parseInt(volumeSlider.max, 10)) {
-        volumeSlider.max = state.volume;
+        volumeSlider.max = state.volume.toString();
         document.querySelector('.slider-max').textContent = state.volume + '%';
-      } else if (volumeSlider.max > 1000 && state.volume <= 1000) {
-        volumeSlider.max = 1000;
+      } else if (parseInt(volumeSlider.max, 10) > 1000 && state.volume <= 1000) {
+        volumeSlider.max = "1000";
         document.querySelector('.slider-max').textContent = '1000%';
       }
       state.volume = Math.min(state.volume, 800);
-      volumeSlider.value = state.volume;
+      volumeSlider.value = state.volume.toString();
       updateVolumeUI();
       updateVolPresetHighlight();
       forceApply();
@@ -230,7 +229,7 @@
       hasConfirmedHighVolume = true;
       if (pendingHighVolume !== null) {
         state.volume = pendingHighVolume;
-        volumeSlider.value = state.volume;
+        volumeSlider.value = state.volume.toString();
         updateVolumeUI();
         updateVolPresetHighlight();
         forceApply();
@@ -247,7 +246,7 @@
       
       if (pendingHighVolume !== null) {
         state.volume = pendingHighVolume;
-        volumeSlider.value = state.volume;
+        volumeSlider.value = state.volume.toString();
         updateVolumeUI();
         updateVolPresetHighlight();
         forceApply();
@@ -257,16 +256,16 @@
     });
 
     // Bass slider
-    bassSlider.addEventListener('input', (e) => {
-      state.bassBoost = parseInt(e.target.value, 10);
+    bassSlider.addEventListener('input', (e: Event) => {
+      state.bassBoost = parseInt((e.target as HTMLInputElement).value, 10);
       bassValue.textContent = `${state.bassBoost} dB`;
       updateSliderFill(bassSlider, state.bassBoost, 0, 15, '#f59e0b');
       pushState();
     });
 
     // Voice slider
-    voiceSlider.addEventListener('input', (e) => {
-      state.voiceBoost = parseInt(e.target.value, 10);
+    voiceSlider.addEventListener('input', (e: Event) => {
+      state.voiceBoost = parseInt((e.target as HTMLInputElement).value, 10);
       voiceValue.textContent = `${state.voiceBoost} dB`;
       updateSliderFill(voiceSlider, state.voiceBoost, 0, 15, '#34d399');
       pushState();
@@ -320,12 +319,12 @@
     }
 
     // 3D Effect toggle
-    let toastTimeout;
+    let toastTimeout: any;
     effect3dToggle.addEventListener('change', () => {
-      state.effect3d = effect3dToggle.checked;
+      state.spatial3d = effect3dToggle.checked;
       pushState();
       
-      if (state.effect3d) {
+      if (state.spatial3d) {
         chrome.storage.local.get(['toastShown'], (res) => {
           if (!res.toastShown) {
             toastNotification.setAttribute('aria-hidden', 'false');
@@ -358,8 +357,8 @@
 
     const toastNeverShowCheckbox = document.getElementById('toastNeverShowCheckbox');
     if (toastNeverShowCheckbox) {
-      toastNeverShowCheckbox.addEventListener('change', (e) => {
-        chrome.storage.local.set({ toastShown: e.target.checked });
+      toastNeverShowCheckbox.addEventListener('change', (e: Event) => {
+        chrome.storage.local.set({ toastShown: (e.target as HTMLInputElement).checked });
       });
     }
 
@@ -385,7 +384,7 @@
     // Volume preset buttons
     volPresetBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        const vol = parseInt(btn.dataset.vol, 10);
+        const vol = parseInt((btn as HTMLElement).dataset.vol!, 10);
         
         if (vol > 800 && !hasConfirmedHighVolume && !state.neverWarnHighVolume) {
           pendingHighVolume = vol;
@@ -394,7 +393,7 @@
         }
 
         state.volume = vol;
-        volumeSlider.value = vol;
+        volumeSlider.value = vol.toString();
         updateVolumeUI();
         updateVolPresetHighlight();
         forceApply();
@@ -403,10 +402,10 @@
     });
 
     // EQ preset buttons
-    presetGrid.addEventListener('click', (e) => {
-      const btn = e.target.closest('.preset-btn');
+    presetGrid.addEventListener('click', (e: Event) => {
+      const btn = (e.target as HTMLElement).closest('.preset-btn') as HTMLElement;
       if (!btn) return;
-      state.preset = btn.dataset.preset;
+      state.preset = btn.dataset.preset!;
       presetGrid.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       pushState();
@@ -414,7 +413,7 @@
   }
 
   // ── Per-Site or Global Volume Memory ───────────────────────────────
-  function saveSiteVolume(volume) {
+  function saveSiteVolume(volume: number) {
     if (isGlobalVolume) {
       chrome.runtime.sendMessage({
         type: 'SET_GLOBAL_PREF',
@@ -446,17 +445,17 @@
     }
 
     // Volume
-    volumeSlider.value = state.volume;
+    volumeSlider.value = state.volume.toString();
     updateVolumeUI();
     updateVolPresetHighlight();
 
     // Bass
-    bassSlider.value = state.bassBoost;
+    bassSlider.value = state.bassBoost.toString();
     bassValue.textContent = `${state.bassBoost} dB`;
     updateSliderFill(bassSlider, state.bassBoost, 0, 15, '#f59e0b');
 
     // Voice
-    voiceSlider.value = state.voiceBoost;
+    voiceSlider.value = state.voiceBoost.toString();
     voiceValue.textContent = `${state.voiceBoost} dB`;
     updateSliderFill(voiceSlider, state.voiceBoost, 0, 15, '#34d399');
 
@@ -464,11 +463,11 @@
     compressorToggle.checked = state.compressor;
 
     // 3D Effect
-    effect3dToggle.checked = state.effect3d || false;
+    effect3dToggle.checked = state.spatial3d || false;
 
     // EQ Presets
     presetGrid.querySelectorAll('.preset-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.preset === state.preset);
+      btn.classList.toggle('active', (btn as HTMLElement).dataset.preset === state.preset);
     });
   }
 
@@ -479,8 +478,8 @@
 
     const fraction = Math.min(vol / 1000, 1);
     const offset   = RING_CIRCUMFERENCE * (1 - fraction);
-    ringFill.style.strokeDasharray  = RING_CIRCUMFERENCE;
-    ringFill.style.strokeDashoffset = offset;
+    ringFill.style.strokeDasharray  = RING_CIRCUMFERENCE.toString();
+    ringFill.style.strokeDashoffset = offset.toString();
 
     // Dynamic ring color
     if (vol <= 100) {
@@ -508,13 +507,13 @@
   // ── Volume Preset Highlight ─────────────────────────────────────────
   function updateVolPresetHighlight() {
     volPresetBtns.forEach(btn => {
-      const bvol = parseInt(btn.dataset.vol, 10);
+      const bvol = parseInt((btn as HTMLElement).dataset.vol!, 10);
       btn.classList.toggle('active', bvol === state.volume);
     });
   }
 
   // ── Generic Slider Fill ─────────────────────────────────────────────
-  function updateSliderFill(slider, value, min, max, color) {
+  function updateSliderFill(slider: HTMLInputElement, value: number, min: number, max: number, color: string) {
     const pct = (value - min) / (max - min);
     const trackColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-elevated').trim();
     const thumbOffset = (0.5 - pct) * 16;
@@ -558,7 +557,7 @@
   async function initTheme() {
     const res = await chrome.storage.local.get('soundflux_theme');
     if (res.soundflux_theme) {
-      currentTheme = res.soundflux_theme;
+      currentTheme = res.soundflux_theme as string;
     } else {
       // Default to Dark Mode
       currentTheme = 'dark';
@@ -695,7 +694,7 @@
   }
 
   // ── Utility ─────────────────────────────────────────────────────────
-  function truncate(str, max) {
+  function truncate(str: string, max: number) {
     return str.length > max ? str.substring(0, max) + '…' : str;
   }
 

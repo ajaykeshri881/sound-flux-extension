@@ -13,20 +13,20 @@
 (function () {
   'use strict';
 
-  if (window.__vmpAudioEngineLoaded) return;
-  window.__vmpAudioEngineLoaded = true;
+  if ((window as any).__vmpAudioEngineLoaded) return;
+  (window as any).__vmpAudioEngineLoaded = true;
 
-  let audioCtx = null;
-  const processedElements = new WeakSet();
-  const elementNodes     = new WeakMap();
-  const fallbackElements = new WeakSet(); // elements using el.volume fallback (e.g. YouTube)
+  let audioCtx: AudioContext | null = null;
+  const processedElements = new WeakSet<HTMLMediaElement>();
+  const elementNodes = new WeakMap<HTMLMediaElement, ElementNode>();
+  const fallbackElements = new WeakSet<HTMLMediaElement>(); // elements using el.volume fallback (e.g. YouTube)
 
-  let currentState = {
+  let currentState: AudioState = {
     volume: 100,
     bassBoost: 0,
     voiceBoost: 0,
     compressor: true,
-    effect3d: false,
+    spatial3d: false,
     preset: 'none',
     enabled: true
   };
@@ -38,7 +38,7 @@
   // RULE: No single band exceeds 8dB. This keeps cumulative overlap
   // under ~12dB even when all bass bands contribute, preventing any
   // internal filter clipping or distortion.
-  const PRESETS = {
+  const PRESETS: Record<string, { d: number; s: number; p: number; b: number; m: number; t: number }> = {
     none:          { d: 0,  s: 0,  p: 0,  b: 0,  m: 0,   t: 0 },
     bass_boost:    { d: 3,  s: 5,  p: 4,  b: 6,  m: -1,  t: 1 },
     vocal_clarity: { d: 0,  s: 0,  p: 0,  b: -2, m: 8,   t: 4 },
@@ -52,9 +52,9 @@
     study:         { d: -1, s: -2, p: -1, b: -2, m: 5,   t: 2 }   // Voice-forward, reduced bass
   };
 
-  function ensureAudioContext() {
+  function ensureAudioContext(): AudioContext {
     if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     if (audioCtx.state === 'suspended') {
       audioCtx.resume();
@@ -63,7 +63,7 @@
   }
 
   // ── Process a media element ────────────────────────────────────────
-  function processElement(el) {
+  function processElement(el: HTMLMediaElement) {
     if (processedElements.has(el)) return;
 
     try {
@@ -161,12 +161,11 @@
       limiter.connect(ctx.destination);
 
       elementNodes.set(el, {
-        source, deepBassFilter, subBassFilter, bassPunchFilter, bassFilter,
-        midFilter, trebleFilter, voiceFilter, gainNode, limiter,
+        source, deepBass: deepBassFilter, subBass: subBassFilter, bassPunch: bassPunchFilter, bass: bassFilter,
+        mid: midFilter, treble: trebleFilter, voice: voiceFilter, gainNode, limiter,
         surroundPanner, headShadow, surroundLevel,
-        orbitAngle: 0,
-        orbitTimer: null
-      });
+        orbitAngle: 0
+      } as any); // Type cast due to orbitTimer dynamically added
 
       processedElements.add(el);
       applyState(el);
@@ -185,7 +184,7 @@
   }
 
   // ── Apply state to a single element ────────────────────────────────
-  function applyState(el) {
+  function applyState(el: HTMLMediaElement) {
     // Fallback path: element owned by another Web Audio graph (e.g. YouTube)
     if (fallbackElements.has(el)) { applyStateFallback(el); return; }
 
@@ -214,13 +213,13 @@
     nodes.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.12);
 
     // ─ True Surround 3D Effect ──────────────────────────────────────────
-    if (currentState.effect3d) {
+    if (currentState.spatial3d) {
       if (nodes.surroundPanner && !nodes.orbitTimer) {
         const TICK     = 50;          // ms between updates
         const SPEED    = 0.030;       // rad/tick → ~10.5s per full 360° orbit
         const PAN_DEPTH = 0.85;       // how wide L/R goes (0=centre, 1=hard pan)
 
-        nodes.orbitTimer = setInterval(() => {
+        (nodes as any).orbitTimer = setInterval(() => {
           nodes.orbitAngle += SPEED;
           const a     = nodes.orbitAngle;
           const front = Math.cos(a);         // +1 = in front, -1 = behind
@@ -246,9 +245,9 @@
       }
     } else {
       // Stop orbit and return all nodes to neutral
-      if (nodes.orbitTimer) {
-        clearInterval(nodes.orbitTimer);
-        nodes.orbitTimer = null;
+      if ((nodes as any).orbitTimer) {
+        clearInterval((nodes as any).orbitTimer);
+        (nodes as any).orbitTimer = null;
       }
       if (nodes.surroundPanner) {
         nodes.surroundPanner.pan.setTargetAtTime(0,     now, 0.5);
@@ -281,23 +280,23 @@
     const eqRamp = 0.10;
     const preset = PRESETS[currentState.preset] || PRESETS.none;
 
-    const eqSet = (param, target) => {
+    const eqSet = (param: AudioParam, target: number) => {
       param.cancelScheduledValues(now);
       param.setValueAtTime(param.value, now);
       param.linearRampToValueAtTime(target, now + eqRamp);
     };
 
-    eqSet(nodes.deepBassFilter.gain,  preset.d || 0);
-    eqSet(nodes.subBassFilter.gain,   preset.s || 0);
-    eqSet(nodes.bassPunchFilter.gain, preset.p || 0);
-    eqSet(nodes.bassFilter.gain,      (preset.b || 0) + (currentState.bassBoost || 0));
-    eqSet(nodes.midFilter.gain,       preset.m || 0);
-    eqSet(nodes.trebleFilter.gain,    preset.t || 0);
-    eqSet(nodes.voiceFilter.gain,     currentState.voiceBoost || 0);
+    eqSet(nodes.deepBass.gain,  preset.d || 0);
+    eqSet(nodes.subBass.gain,   preset.s || 0);
+    eqSet(nodes.bassPunch.gain, preset.p || 0);
+    eqSet(nodes.bass.gain,      (preset.b || 0) + (currentState.bassBoost || 0));
+    eqSet(nodes.mid.gain,       preset.m || 0);
+    eqSet(nodes.treble.gain,    preset.t || 0);
+    eqSet(nodes.voice.gain,     currentState.voiceBoost || 0);
   }
 
   // ── Fallback: control via el.volume (0–100%) only ───────────────────
-  function applyStateFallback(el) {
+  function applyStateFallback(el: HTMLMediaElement) {
     try {
       if (!currentState.enabled) {
         el.volume = 1.0;
@@ -309,12 +308,12 @@
 
   function applyStateAll() {
     document.querySelectorAll('audio, video').forEach(el => {
-      if (processedElements.has(el)) applyState(el);
+      if (processedElements.has(el as HTMLMediaElement)) applyState(el as HTMLMediaElement);
     });
   }
 
   // ── Messages from content.js ───────────────────────────────────────
-  window.addEventListener('message', (event) => {
+  window.addEventListener('message', (event: MessageEvent) => {
     if (event.source !== window) return;
     if (!event.data || event.data.direction !== 'VMP_TO_MAIN') return;
 
@@ -331,13 +330,14 @@
   // ── Scan for media elements ────────────────────────────────────────
   function scanAndProcess() {
     document.querySelectorAll('audio, video').forEach(el => {
-      if (!processedElements.has(el)) {
-        if (el.readyState >= 1 || el.src || el.srcObject || el.querySelector?.('source')) {
-          processElement(el);
+      const mediaEl = el as HTMLMediaElement;
+      if (!processedElements.has(mediaEl)) {
+        if (mediaEl.readyState >= 1 || mediaEl.src || mediaEl.srcObject || mediaEl.querySelector?.('source')) {
+          processElement(mediaEl);
         } else {
-          el.addEventListener('loadedmetadata', () => processElement(el), { once: true });
-          el.addEventListener('canplay', () => processElement(el), { once: true });
-          el.addEventListener('play', () => processElement(el), { once: true });
+          mediaEl.addEventListener('loadedmetadata', () => processElement(mediaEl), { once: true });
+          mediaEl.addEventListener('canplay', () => processElement(mediaEl), { once: true });
+          mediaEl.addEventListener('play', () => processElement(mediaEl), { once: true });
         }
       }
     });
@@ -362,18 +362,19 @@
     window.addEventListener('load', scanAndProcess);
   }
 
-  document.addEventListener('play', (e) => {
-    if (e.target && (e.target.tagName === 'AUDIO' || e.target.tagName === 'VIDEO')) {
-      if (!processedElements.has(e.target)) processElement(e.target);
+  document.addEventListener('play', (e: Event) => {
+    const target = e.target as HTMLMediaElement;
+    if (target && (target.tagName === 'AUDIO' || target.tagName === 'VIDEO')) {
+      if (!processedElements.has(target)) processElement(target);
     }
   }, true);
 
   const originalPlay = HTMLMediaElement.prototype.play;
-  HTMLMediaElement.prototype.play = function () {
+  HTMLMediaElement.prototype.play = function (this: HTMLMediaElement, ...args) {
     if (!processedElements.has(this)) {
       try { processElement(this); } catch (e) { /* ignore */ }
     }
-    return originalPlay.apply(this, arguments);
+    return originalPlay.apply(this, args);
   };
 
   setInterval(scanAndProcess, 3000);

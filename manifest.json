@@ -25,20 +25,20 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/content.js"],
+      "js": ["dist/content/content.js"],
       "run_at": "document_start",
       "all_frames": true
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/injected.js"],
+      "js": ["dist/content/injected.js"],
       "run_at": "document_start",
       "all_frames": true,
       "world": "MAIN"
     }
   ],
   "background": {
-    "service_worker": "src/background/background.js"
+    "service_worker": "dist/background/background.js"
   },
   "host_permissions": ["<all_urls>"]
 }
