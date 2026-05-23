@@ -27,7 +27,7 @@
         <div class="vol-warn-actions">
           <button class="vol-warn-cancel" id="volWarnCancel">Stay Below 800%</button>
           <button class="vol-warn-confirm" id="volWarnConfirm">Continue Anyway</button>
-          <button class="vol-warn-never" id="volWarnNever" style="margin-top: 4px; background: transparent; border: none; color: var(--text-muted); font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 4px; width: 100%;">Don't show this again</button>
+          <button class="vol-warn-never" id="volWarnNever">Don't show this again</button>
         </div>
       </div>
     </div>
@@ -35,7 +35,7 @@
     <!-- ── Anti-Distortion Warning Overlay ─────────────────────────── -->
     <div class="vol-warn-overlay" id="distortionWarnOverlay" aria-hidden="true">
       <div class="vol-warn-dialog" role="alertdialog">
-        <div class="vol-warn-icon-wrap" style="color: var(--danger); background: rgba(239, 68, 68, 0.1);">
+        <div class="vol-warn-icon-wrap" id="distortionIconWrap">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -46,8 +46,8 @@
         <p class="vol-warn-text">Disabling Anti-Distortion at high volumes can cause severe audio clipping and potentially damage your speakers.</p>
         <div class="vol-warn-actions">
           <button class="vol-warn-cancel" id="distortionWarnCancel">Keep Enabled</button>
-          <button class="vol-warn-confirm" id="distortionWarnConfirm" style="background: var(--danger);">Disable Anyway</button>
-          <button class="vol-warn-never" id="distortionWarnNever" style="margin-top: 4px; background: transparent; border: none; color: var(--text-muted); font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 4px; width: 100%;">Don't show this again</button>
+          <button class="vol-warn-confirm" id="distortionWarnConfirm">Disable Anyway</button>
+          <button class="vol-warn-never" id="distortionWarnNever">Don't show this again</button>
         </div>
       </div>
     </div>

@@ -110,27 +110,29 @@
       voiceFilter.frequency.value = 2500;
       voiceFilter.Q.value = 1.0;
       voiceFilter.gain.value = 0;
-      // ── SPATIAL AUDIO ENGINE ──────────────────────────────────────
-      // Single signal path. An LFO drives a StereoPanner left ↔ right.
-      // 3D ON  → LFO depth fades in  → smooth spatial sweep
-      // 3D OFF → LFO depth fades out → panner returns to centre, transparent
-      // There is NO parallel bypass path — doubling is impossible.
+      // ── TRUE SURROUND ENGINE ─────────────────────────────────────
+      // Simulates sound orbiting around the listener using THREE simultaneous
+      // psychoacoustic cues driven by a single orbit angle (setInterval):
+      //
+      // 1. STEREO PAN (ILD)   — sin(angle) → left/right ear dominance
+      // 2. HEAD SHADOW FILTER — cos(angle) → 2.5kHz (behind) → 20kHz (front)
+      //    Mimics how your head blocks/muffles sound from behind you.
+      // 3. LEVEL (Distance)   — cos(angle) → −3dB behind, 0dB in front
+      //
+      // Single path — NO parallel bypass, NO doubling possible.
 
-      const spatialPanner = ctx.createStereoPanner();
-      spatialPanner.pan.value = 0; // centre by default
+      const surroundPanner = ctx.createStereoPanner();
+      surroundPanner.pan.value = 0;
 
-      // Low-frequency oscillator drives the pan position
-      const spatialLfo = ctx.createOscillator();
-      spatialLfo.type = 'sine';
-      spatialLfo.frequency.value = 0.09; // ~11 second full sweep (L→R→L)
-      spatialLfo.start();
+      // Head-shadow lowpass: transparent when in front, muffled when behind
+      const headShadow = ctx.createBiquadFilter();
+      headShadow.type = 'lowpass';
+      headShadow.frequency.value = 20000; // Fully open by default
+      headShadow.Q.value = 0.5;
 
-      // LFO depth gate: 0 = 3D off (no movement), 0.85 = 3D on (wide sweep)
-      const spatialDepth = ctx.createGain();
-      spatialDepth.gain.value = 0;
-
-      spatialLfo.connect(spatialDepth);
-      spatialDepth.connect(spatialPanner.pan);
+      // Level node for front/back amplitude difference
+      const surroundLevel = ctx.createGain();
+      surroundLevel.gain.value = 1.0;
 
       const gainNode = ctx.createGain();
       gainNode.gain.value = 1.0;
@@ -142,7 +144,7 @@
       limiter.attack.value = 0.003;
       limiter.release.value = 0.1;
 
-      // ── CONNECT CHAIN (single path, no branching) ─────────────────
+      // ── SINGLE CONNECT CHAIN ───────────────────────────────────
       source.connect(deepBassFilter);
       deepBassFilter.connect(subBassFilter);
       subBassFilter.connect(bassPunchFilter);
@@ -150,15 +152,20 @@
       bassFilter.connect(midFilter);
       midFilter.connect(trebleFilter);
       trebleFilter.connect(voiceFilter);
-      voiceFilter.connect(spatialPanner); // always in chain
-      spatialPanner.connect(gainNode);
+      // voice → headShadow → surroundLevel → surroundPanner → gainNode → limiter
+      voiceFilter.connect(headShadow);
+      headShadow.connect(surroundLevel);
+      surroundLevel.connect(surroundPanner);
+      surroundPanner.connect(gainNode);
       gainNode.connect(limiter);
       limiter.connect(ctx.destination);
 
       elementNodes.set(el, {
         source, deepBassFilter, subBassFilter, bassPunchFilter, bassFilter,
         midFilter, trebleFilter, voiceFilter, gainNode, limiter,
-        spatialPanner, spatialDepth  // depth gate controls 3D on/off
+        surroundPanner, headShadow, surroundLevel,
+        orbitAngle: 0,
+        orbitTimer: null
       });
 
       processedElements.add(el);
@@ -206,21 +213,47 @@
     nodes.gainNode.gain.setValueAtTime(nodes.gainNode.gain.value, now);
     nodes.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.12);
 
-    // ─ Spatial 3D Effect ─────────────────────────────────────────────
-    if (nodes.spatialDepth) {
-      if (currentState.effect3d) {
-        // Fade LFO depth IN over 1s → smooth, comfortable spatial sweep begins
-        nodes.spatialDepth.gain.cancelScheduledValues(now);
-        nodes.spatialDepth.gain.setValueAtTime(nodes.spatialDepth.gain.value, now);
-        nodes.spatialDepth.gain.linearRampToValueAtTime(0.85, now + 1.0);
-      } else {
-        // Fade LFO depth OUT over 1s → movement stops, panner drifts to centre
-        nodes.spatialDepth.gain.cancelScheduledValues(now);
-        nodes.spatialDepth.gain.setValueAtTime(nodes.spatialDepth.gain.value, now);
-        nodes.spatialDepth.gain.linearRampToValueAtTime(0, now + 1.0);
-        // Gently nudge pan back to 0 so it doesn't freeze mid-sweep
-        nodes.spatialPanner.pan.cancelScheduledValues(now + 1.0);
-        nodes.spatialPanner.pan.setTargetAtTime(0, now + 1.0, 0.5);
+    // ─ True Surround 3D Effect ──────────────────────────────────────────
+    if (currentState.effect3d) {
+      if (nodes.surroundPanner && !nodes.orbitTimer) {
+        const TICK     = 50;          // ms between updates
+        const SPEED    = 0.030;       // rad/tick → ~10.5s per full 360° orbit
+        const PAN_DEPTH = 0.85;       // how wide L/R goes (0=centre, 1=hard pan)
+
+        nodes.orbitTimer = setInterval(() => {
+          nodes.orbitAngle += SPEED;
+          const a     = nodes.orbitAngle;
+          const front = Math.cos(a);         // +1 = in front, -1 = behind
+          const side  = Math.sin(a);         // +1 = right,   -1 = left
+
+          // 1. Stereo position
+          const pan = side * PAN_DEPTH;
+
+          // 2. Head-shadow filter frequency
+          //    In front: 20kHz (fully transparent, bright)
+          //    Behind:   2500Hz (muffled, like through your head)
+          const freq = 2500 + ((front + 1) * 0.5) * 17500;
+
+          // 3. Level: slightly quieter when behind (-3dB ≈ 0.71x)
+          const lvl = 0.80 + ((front + 1) * 0.5) * 0.20; // 0.80…1.0
+
+          const ctx2 = ensureAudioContext();
+          const t    = ctx2.currentTime;
+          nodes.surroundPanner.pan.setTargetAtTime(pan,  t, 0.05);
+          nodes.headShadow.frequency.setTargetAtTime(freq, t, 0.08);
+          nodes.surroundLevel.gain.setTargetAtTime(lvl,  t, 0.08);
+        }, TICK);
+      }
+    } else {
+      // Stop orbit and return all nodes to neutral
+      if (nodes.orbitTimer) {
+        clearInterval(nodes.orbitTimer);
+        nodes.orbitTimer = null;
+      }
+      if (nodes.surroundPanner) {
+        nodes.surroundPanner.pan.setTargetAtTime(0,     now, 0.5);
+        nodes.headShadow.frequency.setTargetAtTime(20000, now, 0.5);
+        nodes.surroundLevel.gain.setTargetAtTime(1.0,  now, 0.5);
       }
     }
 
