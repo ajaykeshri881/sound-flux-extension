@@ -61,3 +61,25 @@ Because of Chrome's strict extension isolation, the extension cannot easily inte
 2. `content.js` creates a `<script>` tag that loads `injected.js` directly into the DOM's main execution environment (Main World).
 3. `injected.js` intercepts the creation of `<audio>` and `<video>` tags (or finds existing ones).
 4. It passes their sources into a complex `AudioContext` graph consisting of deep bass filters, voice clarity filters, a true surround spatial panner, and finally an anti-distortion limiter before sending it to the speakers.
+
+## 🚀 How to Setup / Install
+
+1. Download or clone this repository to your local machine:
+   ```bash
+   git clone https://github.com/ajaykeshri881/sound-flux-extension.git
+   ```
+2. Open Google Chrome and navigate to `chrome://extensions/`.
+3. Enable **Developer mode** using the toggle switch in the top right corner.
+4. Click on the **Load unpacked** button in the top left.
+5. Select the `sound-flux-extension` folder you just downloaded/cloned.
+6. The extension is now installed! Pin it to your toolbar for quick access.
+
+## ❤️ Support & Sponsor
+
+If you love Sound Flux and it makes your daily listening experience better, please consider supporting the project!
+
+- ⭐ **Give us a Star:** If you find this project useful, please give it a star on GitHub! It helps others find it and keeps the development active.
+- ☕ **Sponsor the Developer:** You can support the ongoing development and maintenance by sponsoring me:
+  [Sponsor Ajay Keshri on GitHub](https://github.com/sponsors/ajaykeshri881)
+
+Enjoy your premium audio experience!
