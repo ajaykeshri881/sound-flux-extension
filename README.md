@@ -4,6 +4,8 @@ Boost your audio listening experience on the web with a professional, premium-gr
 
 Features include up to 1000% volume amplification, a true surround 3D spatial engine, anti-distortion limiters, premium bass/vocal tuning, dynamic live visualizer, and an elegant glassmorphism UI.
 
+[![Install Sound Flux](https://img.shields.io/badge/Chrome%20Web%20Store-Install%20Now-6f42ff?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/sound-flux/jjhfcdepgfoklipmeglnlncebbmjpgic)
+
 ## ✨ Key Features
 
 - **Volume Booster (up to 1000%):** Increase audio volume massively beyond system limits. Uses a proprietary exponential gain curve to handle extreme boosts while minimizing artifacting.
